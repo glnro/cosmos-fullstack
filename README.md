@@ -45,3 +45,55 @@ There should be a `1000uneutrino` change in the bank balances of `Alice` and `Bo
 ./build/neutrinod  export --home ~/.neutrinod-liveness 
 ```
 
+#### Sequence
+
+**⚛️ Client Application**
+
+`/x/bank/client/tx.go`
+1.  Receive CLI Bank Send 
+2. Format message & broadcast to consensus app
+
+**☄️ Consensus Application**
+
+`rpc/core/mempool.go`
+3. Receive broadcasted Tx -> call mempool.CheckTx
+
+`mempool/v0/clist_mempool.go`
+4. Call CheckTx on ABCI application
+
+**🚀 State Machine Application**
+
+`baseapp/abci.go`
+5. Run CheckTx on `MsgSend`
+6. Retrieve cached context and multistore
+7. Decode Tx
+8. Validate Basic
+9. NOOP (Insert into app side mempool)
+10. Return Success response to Consensu App
+
+**☄️ Consensus Application**
+
+`mempool/v0/clist_mempool.go`
+11. Add Tx to Mempool
+
+`/consensus/state.go`
+12. Prepare Block Proposal
+
+`/state/execution.go`
+13. Call BeginBlock on App
+14. Call DeliverTx on App
+
+**🚀 State Machine Application**
+
+`baseapp/abci.go`
+15. Run DeliverTx
+
+`x/bank/keeper/msg_server.go`
+16. Validate Basic
+17. Run Send
+
+` x/bank/keeper/send.go`
+18. Subtract coins from sender
+19. Add coins to recipient
+20. Create account if none exists
+21. Emit Transfer Event
